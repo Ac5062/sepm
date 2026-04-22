@@ -31,7 +31,6 @@ const sendTokenResponse = (user, statusCode, res) => {
 
 // ── POST /api/auth/register ───────────────────────────────
 const register = async (req, res) => {
->>>>>>> acf6b7a (Add backend: auth, medicines, reminders API with security middleware)
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({
@@ -44,7 +43,6 @@ const register = async (req, res) => {
   try {
     const { name, email, password, phone } = req.body;
 
->>>>>>> acf6b7a (Add backend: auth, medicines, reminders API with security middleware)
     const existing = await User.findOne({ email: email.toLowerCase() });
     if (existing) {
       return res.status(400).json({
