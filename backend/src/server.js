@@ -5,6 +5,11 @@ const cors    = require('cors');
 const morgan  = require('morgan');
 
 const connectDB = require('../config/db');
+const {
+  securityHeaders,
+  sanitizeInput,
+  generalLimiter,
+} = require('./middleware/securityMiddleware');
 
 // ── Route imports ────────────────────────────────────────
 const authRoutes      = require('./routes/authRoutes');
@@ -16,19 +21,18 @@ connectDB();
 
 const app = express();
 
-// ── Middleware ───────────────────────────────────────────
-// In development allow any localhost port; in production restrict to CLIENT_URL
+// ── Security headers (helmet replacement) ───────────────
+app.use(securityHeaders);
+
+// ── CORS ─────────────────────────────────────────────────
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, Postman, server-to-server)
     if (!origin) return callback(null, true);
-    // Allow any localhost / 127.0.0.1 origin in development
     if (process.env.NODE_ENV === 'development') {
       if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
         return callback(null, true);
       }
     }
-    // In production, only allow the configured CLIENT_URL
     if (origin === process.env.CLIENT_URL) {
       return callback(null, true);
     }
@@ -37,8 +41,15 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+// Body parsers — limit payload size to prevent large-body DoS attacks
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: false, limit: '10kb' }));
+
+// ── Input sanitization ───────────────────────────────────
+app.use(sanitizeInput);
+
+// ── General rate limiter (200 req / 15 min per IP) ──────
+app.use('/api', generalLimiter);
 
 // HTTP request logger (only in development)
 if (process.env.NODE_ENV === 'development') {
