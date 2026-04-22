@@ -13,6 +13,7 @@ import { MedicineDetail } from '../pages/MedicineDetail';
 import { PharmacyFinder } from '../pages/PharmacyFinder';
 import { AdminPanel } from '../pages/AdminPanel';
 import { Reminders } from '../pages/Reminders';
+import { Profile } from '../pages/Profile';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -76,6 +77,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <AdminPanel />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Profile />
           </ProtectedRoute>
         }
       />

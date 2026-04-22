@@ -98,6 +98,14 @@ export interface Reminder {
   createdAt: string;
 }
 
+export interface AdminStats {
+  totalUsers: number;
+  totalMedicines: number;
+  totalAdmins: number;
+  monthlyData: { month: string; users: number; medicines: number }[];
+  categoryBreakdown: { name: string; value: number }[];
+}
+
 // ── Auth API ──────────────────────────────────────────────
 export const authApi = {
   register: async (data: { name: string; email: string; phone: string; password: string }) => {
@@ -113,6 +121,39 @@ export const authApi = {
   getMe: async () => {
     const res = await api.get<{ success: boolean; user: ApiUser }>('/auth/me');
     return res.data.user;
+  },
+
+  forgotPassword: async (email: string) => {
+    const res = await api.post<{ success: boolean; message: string }>('/auth/forgot-password', { email });
+    return res.data;
+  },
+
+  verifyOTP: async (email: string, otp: string) => {
+    const res = await api.post<{ success: boolean; resetToken: string }>('/auth/verify-otp', { email, otp });
+    return res.data;
+  },
+
+  resetPassword: async (resetToken: string, password: string) => {
+    const res = await api.post<{ success: boolean; message: string }>('/auth/reset-password', { resetToken, password });
+    return res.data;
+  },
+
+  updateProfile: async (data: { name?: string; phone?: string }) => {
+    const res = await api.put<{ success: boolean; message: string; user: ApiUser }>('/auth/profile', data);
+    return res.data;
+  },
+
+  changePassword: async (currentPassword: string, newPassword: string) => {
+    const res = await api.put<{ success: boolean; message: string }>('/auth/change-password', {
+      currentPassword,
+      newPassword,
+    });
+    return res.data;
+  },
+
+  getAdminStats: async () => {
+    const res = await api.get<{ success: boolean; data: AdminStats }>('/auth/stats');
+    return res.data.data;
   },
 };
 

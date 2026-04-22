@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Switch } from '../app/components/ui/switch';
 import { Textarea } from '../app/components/ui/textarea';
 import { Pill, Plus, Edit, Trash2, BarChart3, Users, ArrowLeft, Search, TrendingUp } from 'lucide-react';
-import { medicineApi, type Medicine, getErrorMessage } from '../services/api';
+import { medicineApi, authApi, type Medicine, type AdminStats, getErrorMessage } from '../services/api';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import {
@@ -29,13 +29,25 @@ export function AdminPanel() {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [adminStats, setAdminStats] = useState<AdminStats | null>(null);
 
-  // Fetch all medicines on mount
+  // Fetch medicines + real admin stats on mount
   useEffect(() => {
-    medicineApi.getAll({ limit: 100 })
-      .then(res => setMedicineList(res.data))
-      .catch(err => toast.error(getErrorMessage(err)))
-      .finally(() => setLoading(false));
+    const fetchData = async () => {
+      try {
+        const [medicineRes, stats] = await Promise.all([
+          medicineApi.getAll({ limit: 100 }),
+          authApi.getAdminStats(),
+        ]);
+        setMedicineList(medicineRes.data);
+        setAdminStats(stats);
+      } catch (err) {
+        toast.error(getErrorMessage(err));
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
   if (!isAdmin) {
@@ -68,33 +80,46 @@ export function AdminPanel() {
   };
 
   const stats = [
-    { title: 'Total Medicines', value: medicineList.length, icon: Pill, color: 'bg-primary' },
-    { title: 'Total Users',     value: '1,234',             icon: Users, color: 'bg-secondary' },
+    {
+      title: 'Total Medicines',
+      value: loading ? '…' : (adminStats?.totalMedicines ?? medicineList.length),
+      icon: Pill,
+      color: 'bg-primary',
+    },
+    {
+      title: 'Registered Users',
+      value: loading ? '…' : (adminStats?.totalUsers ?? '—'),
+      icon: Users,
+      color: 'bg-secondary',
+    },
     {
       title: 'Total Reviews',
-      value: medicineList.reduce((sum, m) => sum + m.reviews, 0),
+      value: loading ? '…' : medicineList.reduce((sum, m) => sum + m.reviews, 0),
       icon: BarChart3,
       color: 'bg-accent',
     },
   ];
 
-  // Analytics data
-  const categoryDistribution = [
-    { name: 'Pain Relief', value: medicineList.filter(m => m.category === 'Pain Relief').length, color: '#1E88E5' },
-    { name: 'Diabetes',    value: medicineList.filter(m => m.category === 'Diabetes').length,    color: '#00A86B' },
-    { name: 'Cholesterol', value: medicineList.filter(m => m.category === 'Cholesterol').length, color: '#FF9800' },
-    { name: 'Allergy',     value: medicineList.filter(m => m.category === 'Allergy').length,     color: '#AB47BC' },
-    { name: 'Gastric',     value: medicineList.filter(m => m.category === 'Gastric').length,     color: '#26C6DA' },
-    { name: 'Antibiotic',  value: medicineList.filter(m => m.category === 'Antibiotic').length,  color: '#90CAF9' },
-  ];
+  // Analytics data — from real DB stats when available, fallback to local computation
+  const CHART_COLORS = ['#1E88E5', '#00A86B', '#FF9800', '#AB47BC', '#26C6DA', '#90CAF9', '#EF5350', '#66BB6A'];
+  const categoryDistribution = adminStats?.categoryBreakdown
+    ? adminStats.categoryBreakdown.map((c, i) => ({ ...c, color: CHART_COLORS[i % CHART_COLORS.length] }))
+    : [
+        { name: 'Pain Relief', value: medicineList.filter(m => m.category === 'Pain Relief').length, color: '#1E88E5' },
+        { name: 'Diabetes',    value: medicineList.filter(m => m.category === 'Diabetes').length,    color: '#00A86B' },
+        { name: 'Cholesterol', value: medicineList.filter(m => m.category === 'Cholesterol').length, color: '#FF9800' },
+        { name: 'Allergy',     value: medicineList.filter(m => m.category === 'Allergy').length,     color: '#AB47BC' },
+        { name: 'Gastric',     value: medicineList.filter(m => m.category === 'Gastric').length,     color: '#26C6DA' },
+        { name: 'Antibiotic',  value: medicineList.filter(m => m.category === 'Antibiotic').length,  color: '#90CAF9' },
+      ];
 
-  const monthlyData = [
-    { month: 'Jan', medicines: 45, users: 120, reviews: 340 },
-    { month: 'Feb', medicines: 52, users: 145, reviews: 420 },
-    { month: 'Mar', medicines: 48, users: 168, reviews: 390 },
-    { month: 'Apr', medicines: 61, users: 195, reviews: 510 },
-    { month: 'May', medicines: 55, users: 220, reviews: 480 },
-    { month: 'Jun', medicines: 67, users: 250, reviews: 620 },
+  const monthlyData = adminStats?.monthlyData ?? [
+    { month: 'Jan', medicines: 45, users: 120 },
+    { month: 'Feb', medicines: 52, users: 145 },
+    { month: 'Mar', medicines: 48, users: 168 },
+    { month: 'Apr', medicines: 61, users: 195 },
+    { month: 'May', medicines: 55, users: 220 },
+    { month: 'Jun', medicines: 67, users: 250 },
   ];
 
   const priceRangeData = [
@@ -206,9 +231,8 @@ export function AdminPanel() {
                     <YAxis stroke="#616161" />
                     <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #BBDEFB', borderRadius: '8px' }} />
                     <Legend />
-                    <Line type="monotone" dataKey="medicines" stroke="#1E88E5" strokeWidth={3} name="Medicines" />
-                    <Line type="monotone" dataKey="users"     stroke="#00A86B" strokeWidth={3} name="Users" />
-                    <Line type="monotone" dataKey="reviews"   stroke="#FF9800" strokeWidth={3} name="Reviews" />
+                    <Line type="monotone" dataKey="medicines" stroke="#1E88E5" strokeWidth={3} name="Medicines Added" />
+                    <Line type="monotone" dataKey="users"     stroke="#00A86B" strokeWidth={3} name="New Users" />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>

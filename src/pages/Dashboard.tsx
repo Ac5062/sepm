@@ -160,10 +160,14 @@ export function Dashboard() {
                 {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </Button>
               
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted">
+              <button
+                onClick={() => navigate('/profile')}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+                title="View profile"
+              >
                 <User className="w-4 h-4" />
                 <span className="text-sm font-medium hidden sm:inline">{user?.name}</span>
-              </div>
+              </button>
               
               <Button
                 variant="outline"

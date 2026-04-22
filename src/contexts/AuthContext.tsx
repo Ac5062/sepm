@@ -6,6 +6,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string, name: string, phone: string) => Promise<boolean>;
   logout: () => void;
+  updateUser: (updated: ApiUser) => void;
   isAdmin: boolean;
 }
 
@@ -69,12 +70,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('user');
   };
 
+  // ── Update stored user (after profile edit) ─────────────
+  const updateUser = (updated: ApiUser) => {
+    setUser(updated);
+    localStorage.setItem('user', JSON.stringify(updated));
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
       login,
       register,
       logout,
+      updateUser,
       isAdmin: user?.role === 'admin',
     }}>
       {children}
